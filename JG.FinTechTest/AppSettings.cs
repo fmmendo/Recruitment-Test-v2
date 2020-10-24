@@ -8,5 +8,7 @@ namespace JG.FinTechTest
     public class AppSettings
     {
         public decimal TaxRate { get; set; }
+        public decimal MinimumDonation { get; set; }
+        public decimal MaximumDonation { get; set; }
     }
 }

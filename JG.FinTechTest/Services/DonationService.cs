@@ -8,7 +8,7 @@ namespace JG.FinTechTest.Services
 {
     public interface IDonationService
     {
-        decimal CalculateGiftAidAmount(decimal amount);
+        Result<decimal> CalculateGiftAidAmount(decimal amount);
     }
 
     public class DonationService : IDonationService
@@ -20,9 +20,16 @@ namespace JG.FinTechTest.Services
             _settings = settings.Value;
         }
 
-        public decimal CalculateGiftAidAmount(decimal amount)
+        public Result<decimal> CalculateGiftAidAmount(decimal amount)
         {
-            return amount * (_settings.TaxRate / (100 - _settings.TaxRate));
+            if (amount <= _settings.MinimumDonation)
+                return Result.Fail<decimal>(default, $"Donation amount '£{amount}' is below minimum (£{_settings.MinimumDonation})", ErrorType.DonationAmountBelowMinimum);
+            if (amount >= _settings.MaximumDonation)
+                return Result.Fail<decimal>(default, $"Donation amount '£{amount}' is above maximum (£{_settings.MaximumDonation})", ErrorType.DonationAmountAboveMaximum);
+
+            var giftAid = amount * (_settings.TaxRate / (100 - _settings.TaxRate));
+
+            return Result.Ok(giftAid);
         }
     }
 }

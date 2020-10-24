@@ -10,12 +10,16 @@ namespace JG.FinTechTest.Tests.Services
     public class DonationServiceTests
     {
         DonationService service;
-        IOptions<AppSettings> settings;
 
         [SetUp]
         public void Setup()
         {
-            var settings = Options.Create(new AppSettings { TaxRate = 20 });
+            var settings = Options.Create(new AppSettings
+            {
+                TaxRate = 20,
+                MinimumDonation = 2,
+                MaximumDonation = 100000
+            });
 
             service = new DonationService(settings);
         }
@@ -28,7 +32,30 @@ namespace JG.FinTechTest.Tests.Services
 
             var result = service.CalculateGiftAidAmount(amount);
 
-            Assert.AreEqual(expected, result);
+            Assert.IsTrue(result.IsSuccess);
+            Assert.AreEqual(expected, result.Value);
+        }
+
+        [Test]
+        public void CalculateGiftAidAmount_ReturnsErrorIfAmountExceedsMaximum()
+        {
+            decimal amount = 123000m;
+
+            var result = service.CalculateGiftAidAmount(amount);
+
+            Assert.IsTrue(result.IsFailure);
+            Assert.AreEqual(ErrorType.DonationAmountAboveMaximum, result.ErrorType);
+        }
+
+        [Test]
+        public void CalculateGiftAidAmount_ReturnsErrorIfAmountBelowMinimum()
+        {
+            decimal amount = 1m;
+
+            var result = service.CalculateGiftAidAmount(amount);
+
+            Assert.IsTrue(result.IsFailure);
+            Assert.AreEqual(ErrorType.DonationAmountBelowMinimum, result.ErrorType);
         }
     }
 }
