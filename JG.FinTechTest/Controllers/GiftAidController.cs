@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using JG.FinTechTest.Model;
 using JG.FinTechTest.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -21,10 +23,25 @@ namespace JG.FinTechTest.Controllers
             _settings = settings.Value;
         }
 
+        //[HttpGet]
+        //public IActionResult Test()
+        //{
+        //    return Ok("Hello World");
+        //}
+
         [HttpGet]
-        public IActionResult Test()
+        //[Route("{amount}")]
+        public IActionResult CalculateGiftAid([FromQuery][Required()] decimal amount)
         {
-            return Ok("Hello World");
+            var giftAid = _service.CalculateGiftAidAmount(amount);
+
+            var response = new GiftAidResponse()
+            {
+                DonationAmount = amount,
+                GiftAidAmount = giftAid
+            };
+
+            return Ok(response);
         }
     }
 }
