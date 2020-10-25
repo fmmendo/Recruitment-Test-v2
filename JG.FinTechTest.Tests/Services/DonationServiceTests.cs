@@ -1,15 +1,20 @@
-﻿using JG.FinTechTest.Services;
+﻿using JG.FinTechTest.Model;
+using JG.FinTechTest.Repository;
+using JG.FinTechTest.Services;
 using Microsoft.Extensions.Options;
+using NSubstitute;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace JG.FinTechTest.Tests.Services
 {
     public class DonationServiceTests
     {
         DonationService service;
+        IRepository<GiftAidDeclaration> repository = Substitute.For<IRepository<GiftAidDeclaration>>();
 
         [SetUp]
         public void Setup()
@@ -21,41 +26,65 @@ namespace JG.FinTechTest.Tests.Services
                 MaximumDonation = 100000
             });
 
-            service = new DonationService(settings);
+            service = new DonationService(settings, repository);
         }
 
         [Test]
-        public void CalculateGiftAidAmount_CorrectlyCalculatesGiftAid()
+        [TestCase(10, 2.5, true, ErrorType.None)]
+        [TestCase(123000, 0, false, ErrorType.DonationAmountAboveMaximum)]
+        [TestCase(1, 0, false, ErrorType.DonationAmountBelowMinimum)]
+        public void CalculateGiftAidAmount_CorrectlyCalculatesGiftAid(decimal amount, decimal expected, bool isSuccess, ErrorType errorType)
         {
-            decimal amount = 10m;
-            decimal expected = 2.5m;
-
             var result = service.CalculateGiftAidAmount(amount);
+
+            Assert.AreEqual(isSuccess, result.IsSuccess);
+            if (isSuccess)
+                Assert.AreEqual(expected, result.Value);
+            else
+                Assert.AreEqual(errorType, result.ErrorType);
+        }
+
+        [Test]
+        [TestCase("bob", "e15 4qa", 12, 1)]
+        public async Task Store_WritesToDatabaseAndReturnsId(string name, string postcode, decimal amount, int id)
+        {
+            repository.InsertRecord(Arg.Any<GiftAidDeclaration>())
+                      .Returns(Result.Ok(id));
+
+            var result = await service.StoreGiftAidDeclaration(name, postcode, amount);
 
             Assert.IsTrue(result.IsSuccess);
-            Assert.AreEqual(expected, result.Value);
+
+            Assert.AreEqual(id, result.Value);
+            repository.Received().InsertRecord(Arg.Any<GiftAidDeclaration>());
         }
 
         [Test]
-        public void CalculateGiftAidAmount_ReturnsErrorIfAmountExceedsMaximum()
+        [TestCase("bob", "e15 4qa", 12, 1)]
+        public async Task Store_ReturnsErrorIfFailedToWriteToDatabase(string name, string postcode, decimal amount, int id)
         {
-            decimal amount = 123000m;
+            repository.InsertRecord(Arg.Any<GiftAidDeclaration>())
+                      .Returns(Result.Fail<int>(default(int),"error", ErrorType.FailedToInsertToDatabase));
 
-            var result = service.CalculateGiftAidAmount(amount);
+            var result = await service.StoreGiftAidDeclaration(name, postcode, amount);
 
-            Assert.IsTrue(result.IsFailure);
-            Assert.AreEqual(ErrorType.DonationAmountAboveMaximum, result.ErrorType);
+            Assert.IsFalse(result.IsSuccess);
+            Assert.AreEqual(ErrorType.FailedToInsertToDatabase, result.ErrorType);
+            repository.Received().InsertRecord(Arg.Any<GiftAidDeclaration>());
         }
 
         [Test]
-        public void CalculateGiftAidAmount_ReturnsErrorIfAmountBelowMinimum()
+        [TestCase("", "sw8", 12,   ErrorType.InvalidParameter)]
+        [TestCase("bob", "", 12,   ErrorType.InvalidParameter)]
+        [TestCase("bob", "abcd", 12,   ErrorType.InvalidPostCode)]
+        [TestCase("bob", "ab2aaa 2cd", 12,   ErrorType.InvalidPostCode)]
+        public async Task Store_FailsWithInvalidParameters(string name, string postcode, decimal amount, ErrorType errorType)
         {
-            decimal amount = 1m;
+            var result = await service.StoreGiftAidDeclaration(name, postcode, amount);
 
-            var result = service.CalculateGiftAidAmount(amount);
-
-            Assert.IsTrue(result.IsFailure);
-            Assert.AreEqual(ErrorType.DonationAmountBelowMinimum, result.ErrorType);
+            Assert.IsFalse(result.IsSuccess);
+            Assert.AreEqual(errorType, result.ErrorType);
+            repository.DidNotReceive().InsertRecord(Arg.Any<GiftAidDeclaration>());
         }
     }
 }

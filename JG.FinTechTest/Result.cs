@@ -61,5 +61,9 @@ namespace JG.FinTechTest
         None,
         DonationAmountAboveMaximum,
         DonationAmountBelowMinimum,
+        DonationNotFound,
+        InvalidParameter,
+        FailedToInsertToDatabase,
+        InvalidPostCode,
     }
 }

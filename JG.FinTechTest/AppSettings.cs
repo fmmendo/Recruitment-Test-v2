@@ -10,5 +10,7 @@ namespace JG.FinTechTest
         public decimal TaxRate { get; set; }
         public decimal MinimumDonation { get; set; }
         public decimal MaximumDonation { get; set; }
+        public string DbLocation { get; set; }
+        public string DonationsTable { get; set; }
     }
 }

@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace JG.FinTechTest.Controllers
 {
+    [Produces("application/json")] 
     [Route("api/giftaid")]
     [ApiController]
     public class GiftAidController : ControllerBase
@@ -52,6 +53,49 @@ namespace JG.FinTechTest.Controllers
             };
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Creates GiftAid declaration.
+        /// </summary>
+        /// <param name="request">A DeclarationRequest with Name, PostCode and Donation Amount</param>
+        /// <remarks>
+        /// Sample request:
+        ///
+        ///     POST api/giftaid/declaration
+        ///     {
+        ///         "name": "Bob",
+        ///         "postcode": "SE1 7ND",
+        ///         "amount": 10.00
+        ///     }
+        ///
+        /// </remarks>
+        /// <returns>A DeclarationResponse with and Id and GiftAid amount.</returns>
+        /// <response code="201">Returns DeclarationResponse.</response>
+        /// <response code="400">If the 'amount' is out of bounds or failed to create declaration.</response>   
+        [HttpPost]
+        [Route("declaration")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<DeclarationResponse>> MakeGiftAidDeclaration(DeclarationRequest request)
+        {
+            var giftAid = _service.CalculateGiftAidAmount(request.Amount);
+
+            if (giftAid.IsFailure)
+                return BadRequest(giftAid.Error);
+
+            var result = await _service.StoreGiftAidDeclaration(request.Name, request.PostCode, request.Amount);
+
+            if (result.IsFailure)
+                return BadRequest(result.Error);
+
+            var response = new DeclarationResponse
+            {
+                GiftAidAmount = giftAid.Value,
+                Id = result.Value
+            };
+
+            return Created(result.Value.ToString(), response);
         }
     }
 }
